@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Calculator</title>
+
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <style>
+    body { font-family: 'DM Sans', sans-serif; }
+    .font-mono-num { font-family: 'DM Mono', monospace; }
+
+    /* Pulse animation on result reveal */
+    @keyframes popIn {
+      0%   { opacity: 0; transform: scale(0.92); }
+      60%  { transform: scale(1.04); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+    .pop-in { animation: popIn 0.25s ease-out forwards; }
+
+    /* Operator button active glow */
+    .op-active {
+      background-color: #1e293b !important; /* slate-800 */
+      color: #f59e0b !important;            /* amber-400 */
+      box-shadow: 0 0 0 3px rgba(245,158,11,0.35);
+    }
+  </style>
+</head>
+
+<body class="min-h-screen bg-slate-200 flex items-center justify-center px-4">
+
+  <!-- ===== CALCULATOR CARD ===== -->
+  <div class="bg-white w-full max-w-xs rounded-3xl shadow-2xl overflow-hidden border border-slate-200">
+
+    <!-- ── Header ── -->
+    <div class="bg-slate-800 px-6 pt-6 pb-5">
+      <p class="text-slate-400 text-xs font-semibold uppercase tracking-widest mb-3">Calculator</p>
+
+      <!-- Number 1 input -->
+      <div class="mb-3">
+        <label class="text-slate-400 text-xs mb-1 block">Number 1</label>
+        <input
+          id="num1"
+          type="number"
+          placeholder="0"
+          class="font-mono-num w-full bg-slate-700 text-white text-xl text-right
+                 rounded-xl px-4 py-2.5 outline-none border-2 border-transparent
+                 focus:border-amber-400 placeholder-slate-500 transition"
+        />
+      </div>
+
+      <!-- Number 2 input -->
+      <div>
+        <label class="text-slate-400 text-xs mb-1 block">Number 2</label>
+        <input
+          id="num2"
+          type="number"
+          placeholder="0"
+          class="font-mono-num w-full bg-slate-700 text-white text-xl text-right
+                 rounded-xl px-4 py-2.5 outline-none border-2 border-transparent
+                 focus:border-amber-400 placeholder-slate-500 transition"
+        />
+      </div>
+    </div>
+
+    <!-- ── Button Panel ── -->
+    <div class="px-5 py-5 space-y-3 bg-slate-100">
+
+      <!-- Operator buttons row -->
+      <div class="grid grid-cols-4 gap-2">
+
+        <!-- Each operator button shares the same base style -->
+        <!-- The .op-active class is toggled via JS to highlight selected op -->
+
+        <button
+          data-op="+"
+          class="op-btn bg-white border border-slate-200 text-slate-700 font-bold
+                 text-lg rounded-xl py-3 hover:bg-slate-50 active:scale-95
+                 transition-all duration-100 shadow-sm"
+        >+</button>
+
+        <button
+          data-op="-"
+          class="op-btn bg-white border border-slate-200 text-slate-700 font-bold
+                 text-lg rounded-xl py-3 hover:bg-slate-50 active:scale-95
+                 transition-all duration-100 shadow-sm"
+        >−</button>
+
+        <button
+          data-op="*"
+          class="op-btn bg-white border border-slate-200 text-slate-700 font-bold
+                 text-lg rounded-xl py-3 hover:bg-slate-50 active:scale-95
+                 transition-all duration-100 shadow-sm"
+        >×</button>
+
+        <button
+          data-op="/"
+          class="op-btn bg-white border border-slate-200 text-slate-700 font-bold
+                 text-lg rounded-xl py-3 hover:bg-slate-50 active:scale-95
+                 transition-all duration-100 shadow-sm"
+        >÷</button>
+
+      </div>
+
+      <!-- Selected operator label -->
+      <p id="opLabel" class="text-center text-xs text-slate-400 h-4">
+        <!-- e.g. "Selected: Addition (+)" -->
+      </p>
+
+      <!-- Equals button -->
+      <button
+        id="equalsBtn"
+        class="w-full bg-amber-400 hover:bg-amber-500 active:scale-95
+               text-white font-bold text-xl py-3.5 rounded-xl shadow-md
+               transition-all duration-100"
+      >=</button>
+
+      <!-- Clear button -->
+      <button
+        id="clearBtn"
+        class="w-full bg-slate-200 hover:bg-slate-300 active:scale-95
+               text-slate-600 font-semibold text-sm py-2.5 rounded-xl
+               transition-all duration-100"
+      >Clear</button>
+
+    </div><!-- End Button Panel -->
+
+    <!-- ── Result Display ── -->
+    <div id="resultBox" class="hidden px-6 pb-6 pt-1 bg-slate-100">
+      <div class="bg-slate-800 rounded-2xl px-5 py-4">
+        <!-- Expression label e.g. "12 + 8 =" -->
+        <p id="resultExpression" class="text-slate-400 text-xs font-mono-num mb-1"></p>
+        <!-- The actual numeric result -->
+        <p id="resultValue"
+           class="font-mono-num text-3xl font-bold text-amber-400 text-right break-all">
+        </p>
+      </div>
+    </div>
+
+    <!-- ── Error Message ── -->
+    <div id="errorBox" class="hidden px-6 pb-5 bg-slate-100">
+      <p id="errorText" class="text-red-500 text-xs text-center bg-red-50
+                                border border-red-100 rounded-xl py-2.5 px-3">
+      </p>
+    </div>
+
+  </div><!-- End Card -->
+
+
+  <!-- =====================================================
+       JAVASCRIPT
+       Real calculator logic:
+       1. User selects ONE operator (stored in a variable)
+       2. User clicks "=" to calculate ONLY that operation
+  ====================================================== -->
+  <script>
+    // -----------------------------------------
+    // 1. ELEMENT REFERENCES
+    // -----------------------------------------
+    const num1Input   = document.getElementById('num1');
+    const num2Input   = document.getElementById('num2');
+    const equalsBtn   = document.getElementById('equalsBtn');
+    const clearBtn    = document.getElementById('clearBtn');
+    const opLabel     = document.getElementById('opLabel');
+    const resultBox   = document.getElementById('resultBox');
+    const resultExpr  = document.getElementById('resultExpression');
+    const resultValue = document.getElementById('resultValue');
+    const errorBox    = document.getElementById('errorBox');
+    const errorText   = document.getElementById('errorText');
+    const opButtons   = document.querySelectorAll('.op-btn'); // All 4 operator buttons
+
+    // -----------------------------------------
+    // 2. STATE: stores the selected operator
+    //    null = nothing chosen yet
+    // -----------------------------------------
+    let selectedOperator = null; // Will be '+', '-', '*', or '/'
+
+    // -----------------------------------------
+    // 3. OPERATOR BUTTON CLICK HANDLER
+    //    Saves chosen operator, highlights button
+    // -----------------------------------------
+    opButtons.forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        // Save which operator was clicked
+        selectedOperator = btn.getAttribute('data-op');
+
+        // Remove highlight from ALL operator buttons first
+        opButtons.forEach(function(b) {
+          b.classList.remove('op-active');
+        });
+
+        // Add highlight ONLY to the clicked button
+        btn.classList.add('op-active');
+
+        // Show a readable label of what is selected
+        const names = {
+          '+': 'Addition (+)',
+          '-': 'Subtraction (−)',
+          '*': 'Multiplication (×)',
+          '/': 'Division (÷)'
+        };
+        opLabel.textContent = 'Selected: ' + names[selectedOperator];
+
+        // Clear previous result/error when operator changes
+        hideResult();
+        hideError();
+      });
+    });
+
+    // -----------------------------------------
+    // 4. EQUALS BUTTON — triggers calculation
+    // -----------------------------------------
+    equalsBtn.addEventListener('click', function() {
+      calculate();
+    });
+
+    // Also allow pressing Enter from either input field
+    num1Input.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') calculate();
+    });
+    num2Input.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') calculate();
+    });
+
+    // -----------------------------------------
+    // 5. CLEAR BUTTON — resets everything
+    // -----------------------------------------
+    clearBtn.addEventListener('click', function() {
+      num1Input.value  = '';
+      num2Input.value  = '';
+      selectedOperator = null;
+      opButtons.forEach(function(b) { b.classList.remove('op-active'); });
+      opLabel.textContent = '';
+      hideResult();
+      hideError();
+      num1Input.focus();
+    });
+
+    // -----------------------------------------
+    // 6. MAIN CALCULATE FUNCTION
+    //    Runs ONLY the selected operation
+    // -----------------------------------------
+    function calculate() {
+      hideResult();
+      hideError();
+
+      const rawA = num1Input.value.trim();
+      const rawB = num2Input.value.trim();
+
+      // Validation: both fields must be filled
+      if (rawA === '' || rawB === '') {
+        showError('Please enter both numbers before calculating.');
+        return;
+      }
+
+      // Convert to numbers
+      const a = parseFloat(rawA);
+      const b = parseFloat(rawB);
+
+      // Validation: must be valid numbers
+      if (isNaN(a) || isNaN(b)) {
+        showError('Invalid input. Please enter valid numbers only.');
+        return;
+      }
+
+      // Validation: an operator must be selected
+      if (selectedOperator === null) {
+        showError('Please select an operator:  +  −  ×  ÷');
+        return;
+      }
+
+      // --- Perform ONLY the selected operation ---
+      let result;
+      let opSymbol; // The symbol shown in the expression label
+
+      if (selectedOperator === '+') {
+        result   = a + b;
+        opSymbol = '+';
+
+      } else if (selectedOperator === '-') {
+        result   = a - b;
+        opSymbol = '−';
+
+      } else if (selectedOperator === '*') {
+        result   = a * b;
+        opSymbol = '×';
+
+      } else if (selectedOperator === '/') {
+        // Guard against division by zero
+        if (b === 0) {
+          showError('Cannot divide by zero — result is undefined.');
+          return;
+        }
+        result   = a / b;
+        opSymbol = '÷';
+      }
+
+      // Show the result
+      showResult(a, opSymbol, b, result);
+    }
+
+    // -----------------------------------------
+    // 7. HELPER: Display the result panel
+    // -----------------------------------------
+    function showResult(a, opSymbol, b, result) {
+      // Round to 8 decimal places and strip trailing zeros
+      const fmt = function(n) {
+        return parseFloat(n.toFixed(8)).toString();
+      };
+
+      resultExpr.textContent  = fmt(a) + ' ' + opSymbol + ' ' + fmt(b) + '  =';
+      resultValue.textContent = fmt(result);
+
+      resultBox.classList.remove('hidden');
+
+      // Re-trigger pop animation each time
+      resultValue.classList.remove('pop-in');
+      void resultValue.offsetWidth; // Force reflow
+      resultValue.classList.add('pop-in');
+    }
+
+    // -----------------------------------------
+    // 8. HELPER: Hide the result panel
+    // -----------------------------------------
+    function hideResult() {
+      resultBox.classList.add('hidden');
+      resultValue.textContent = '';
+      resultExpr.textContent  = '';
+    }
+
+    // -----------------------------------------
+    // 9. HELPER: Show an error message
+    // -----------------------------------------
+    function showError(message) {
+      errorText.textContent = '⚠️  ' + message;
+      errorBox.classList.remove('hidden');
+    }
+
+    // -----------------------------------------
+    // 10. HELPER: Hide the error message
+    // -----------------------------------------
+    function hideError() {
+      errorBox.classList.add('hidden');
+      errorText.textContent = '';
+    }
+
+    // Clear error when user starts typing
+    num1Input.addEventListener('input', hideError);
+    num2Input.addEventListener('input', hideError);
+  </script>
+
+</body>
+</html>
